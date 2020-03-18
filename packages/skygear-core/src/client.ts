@@ -18,6 +18,7 @@ import {
   _PresignUploadRequest,
   _PresignUploadResponse,
   _PresignUploadFormResponse,
+  _OIDCConfiguration,
 } from "./types";
 import { decodeError, SkygearError } from "./error";
 import { encodeQuery } from "./url";
@@ -138,6 +139,29 @@ export abstract class BaseAPIClient {
       }
     }
     return headers;
+  }
+
+  /**
+   * @internal
+   */
+  async _fetch(url: string, init?: RequestInit): Promise<Response> {
+    if (this.fetchFunction == null) {
+      throw new Error("missing fetchFunction in oidc api client");
+    }
+
+    if (this.requestClass == null) {
+      throw new Error("missing requestClass in oidc api client");
+    }
+    const request = new this.requestClass(url, init);
+    return this.fetchFunction(request);
+  }
+
+  /**
+   * @internal
+   */
+  async _fetchJSON(url: string, init?: RequestInit): Promise<any> {
+    const resp = await this._fetch(url, init);
+    return resp.json();
   }
 
   async fetch(
@@ -784,5 +808,14 @@ export abstract class BaseAPIClient {
     return this.post("/_asset/presign_upload_form", {
       json: {},
     });
+  }
+
+  /**
+   * @internal
+   */
+  async _fetchOIDCConfiguration(): Promise<_OIDCConfiguration> {
+    return this._fetchJSON(
+      `${this.authEndpoint}/.well-known/openid-configuration`
+    );
   }
 }
